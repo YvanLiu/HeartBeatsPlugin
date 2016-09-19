@@ -21,8 +21,7 @@
 @property (strong, nonatomic) AVCaptureVideoDataOutput  *output;
 // 输出的所有点
 @property (strong, nonatomic) NSMutableArray            *points;
-// 波峰波谷
-@property (strong, nonatomic) NSMutableArray            *crests;
+
 @end
 
 @implementation HeartBeat
@@ -37,6 +36,8 @@ static int   count = 0;
 static float wait_t = 1.5f;
 // 是否是停顿状态
 static bool is_wait = NO;
+// 周期
+static float T = 10;
 
 #pragma mark - 外部调用方法
 
@@ -63,7 +64,6 @@ static bool is_wait = NO;
     lastH = 0;
     is_wait = NO;
     [self.points removeAllObjects];
-    [self.crests removeAllObjects];
     [self.session stopRunning];
 }
 #pragma mark - 设置摄像头
@@ -134,14 +134,13 @@ static bool is_wait = NO;
     if (self.points.count<40) return;
     
     int count = (int)self.points.count;
-    
+    // 一. 在前4秒钟确定出一个瞬时心率
     if (self.points.count%10 == 0) {
         
         int d_i_c = 0;          //最低峰值的位置 姑且算在中间位置 c->center
         int d_i_l = 0;          //最低峰值左面的最低峰值位置 l->left
         int d_i_r = 0;          //最低峰值右面的最低峰值位置 r->right
         
-        float T = 10;           //周期
         
         float trough_c = 0;     //最低峰值的浮点值
         float trough_l = 0;     //最低峰值左面的最低峰值浮点值
@@ -253,7 +252,7 @@ static bool is_wait = NO;
         
         // 3. 确定哪一个与最低峰值更接近 用最接近的一个最低峰值测出瞬时心率 60*1000两个峰值的时间差
         if (trough_l-trough_c < trough_r-trough_c) {
-            
+        
             NSDictionary *point_c = self.points[d_i_c];
             NSDictionary *point_l = self.points[d_i_l];
             double t_c = [[[point_c allKeys] firstObject] doubleValue];
@@ -274,14 +273,48 @@ static bool is_wait = NO;
             if ([self.delegate respondsToSelector:@selector(startHeartDelegateRateFrequency:)])
                 [self.delegate startHeartDelegateRateFrequency:fre];
         }
-
-        
+//    } else {
+//        // 二. 如果不是4秒，后面每一秒算一次
+//        if (self.points.count%10 == 0) {
+//            int d_i_l = 0;
+//            int d_i_s = 0;
+//            float trough_l = 0;     //最后一个周期的最低峰值浮点值 l->last
+//            float trough_s = 0;     //最后一个周期前面的最低峰值浮点值 s->second
+//            int count = (int)self.points.count;
+//            // 1.最后一个周期最低峰值
+//            for (int i = count-T; i <count; i++) {
+//                float trough = [[[self.points[i] allObjects] firstObject] floatValue];
+//                if (trough < trough_l) {
+//                    trough_l = trough;
+//                    d_i_l = i;
+//                }
+//            }
+//            // 2.z这个峰值前1周期的最低峰值
+//            for (int j = d_i_l ; j > d_i_l - 1.0*T; j--) {
+//                float trough = [[[self.points[j] allObjects] firstObject] floatValue];
+//                if (trough < trough_s) {
+//                    trough_l = trough;
+//                    d_i_s = j;
+//                }
+//            }
+//            // 3.计算瞬时心率
+//            NSDictionary *point_l = self.points[d_i_l];
+//            NSDictionary *point_s = self.points[d_i_s];
+//            double t_l = [[[point_l allKeys] firstObject] doubleValue];
+//            double t_s = [[[point_s allKeys] firstObject] doubleValue];
+//            NSInteger fre = (NSInteger)(60*1000)/(t_l - t_s);
+//            if (self.frequency)
+//                self.frequency(fre);
+//            if ([self.delegate respondsToSelector:@selector(startHeartDelegateRateFrequency:)])
+//                [self.delegate startHeartDelegateRateFrequency:fre];
+//
+//        }
     }
 }
 
 
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
-    // captureOutput->当前output   sampleBuffer->样本缓冲   connection->捕获连接
+// captureOutput->当前output   sampleBuffer->样本缓冲   connection->捕获连接
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     
     //获取图层缓冲
@@ -298,9 +331,11 @@ static bool is_wait = NO;
     TORGB(buf, width, height, bytesPerRow, &r, &g, &b);
     // RGB转HSV
     RGBtoHSV(r, g, b, &h, &s, &v);
-    // 获取当前时间戳
+    // 获取当前时间戳（精确到毫秒）
     double t = [[NSDate date] timeIntervalSince1970]*1000;
+    // 返回处理后的浮点值
     float p = HeartRate(h);
+    // 绑定浮点和时间戳
     NSDictionary *point = @{[NSNumber numberWithDouble:t]:[NSNumber numberWithFloat:p]};
     
     // 范围之外
@@ -317,7 +352,6 @@ static bool is_wait = NO;
         count = 0;
         lastH = 0;
         [self.points removeAllObjects];
-        [self.crests removeAllObjects];
         is_wait = YES;
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(wait_t * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             is_wait = NO;
@@ -409,7 +443,6 @@ void RGBtoHSV( float r, float g, float b, float *h, float *s, float *v ) {
         self.input      = [[AVCaptureDeviceInput alloc]initWithDevice:self.device error:nil];
         self.output     = [[AVCaptureVideoDataOutput alloc]init];
         self.points     = [[NSMutableArray alloc]init];
-        self.crests     = [[NSMutableArray alloc]init];
     }
     return self;
 }
