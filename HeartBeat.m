@@ -96,8 +96,6 @@ static float T = 10;
     // 配置input output
     [self.session beginConfiguration];
     
-
-    
     // 设置像素输出格式
     NSNumber *BGRA32Format = [NSNumber numberWithInt:kCVPixelFormatType_32BGRA];
     NSDictionary *setting  =@{(id)kCVPixelBufferPixelFormatTypeKey:BGRA32Format};
@@ -114,7 +112,7 @@ static float T = 10;
     if ([self.session canAddOutput:self.output]) [self.session addOutput:self.output];
     
     // 降低分辨率，减少采样率
-    self.session.sessionPreset = AVCaptureSessionPreset1280x720;
+    //self.session.sessionPreset = AVCaptureSessionPreset1280x720;
     // 设置最小的视频帧输出间隔
     self.device.activeVideoMinFrameDuration = CMTimeMake(1, 10);
 
@@ -131,10 +129,9 @@ static float T = 10;
 - (void)analysisPointsWith:(NSDictionary *)point {
     
     [self.points addObject:point];
-    if (self.points.count<40) return;
-    
+    if (self.points.count<=30) return;
     int count = (int)self.points.count;
-    // 一. 在前4秒钟确定出一个瞬时心率
+    
     if (self.points.count%10 == 0) {
         
         int d_i_c = 0;          //最低峰值的位置 姑且算在中间位置 c->center
@@ -273,42 +270,10 @@ static float T = 10;
             if ([self.delegate respondsToSelector:@selector(startHeartDelegateRateFrequency:)])
                 [self.delegate startHeartDelegateRateFrequency:fre];
         }
-//    } else {
-//        // 二. 如果不是4秒，后面每一秒算一次
-//        if (self.points.count%10 == 0) {
-//            int d_i_l = 0;
-//            int d_i_s = 0;
-//            float trough_l = 0;     //最后一个周期的最低峰值浮点值 l->last
-//            float trough_s = 0;     //最后一个周期前面的最低峰值浮点值 s->second
-//            int count = (int)self.points.count;
-//            // 1.最后一个周期最低峰值
-//            for (int i = count-T; i <count; i++) {
-//                float trough = [[[self.points[i] allObjects] firstObject] floatValue];
-//                if (trough < trough_l) {
-//                    trough_l = trough;
-//                    d_i_l = i;
-//                }
-//            }
-//            // 2.z这个峰值前1周期的最低峰值
-//            for (int j = d_i_l ; j > d_i_l - 1.0*T; j--) {
-//                float trough = [[[self.points[j] allObjects] firstObject] floatValue];
-//                if (trough < trough_s) {
-//                    trough_l = trough;
-//                    d_i_s = j;
-//                }
-//            }
-//            // 3.计算瞬时心率
-//            NSDictionary *point_l = self.points[d_i_l];
-//            NSDictionary *point_s = self.points[d_i_s];
-//            double t_l = [[[point_l allKeys] firstObject] doubleValue];
-//            double t_s = [[[point_s allKeys] firstObject] doubleValue];
-//            NSInteger fre = (NSInteger)(60*1000)/(t_l - t_s);
-//            if (self.frequency)
-//                self.frequency(fre);
-//            if ([self.delegate respondsToSelector:@selector(startHeartDelegateRateFrequency:)])
-//                [self.delegate startHeartDelegateRateFrequency:fre];
-//
-//        }
+        // 4.删除过期数据
+        for (int i = 0; i< 10; i++) {
+            [self.points removeObjectAtIndex:0];
+        }
     }
 }
 
@@ -368,11 +333,6 @@ static float T = 10;
         // 分析波峰波谷
         [self analysisPointsWith:point];
     }
-    
-    
-    
-    
-    
 }
 
 #pragma mark - 根据h返回 浮点
