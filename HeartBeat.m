@@ -112,7 +112,7 @@ static float T = 10;
     if ([self.session canAddOutput:self.output]) [self.session addOutput:self.output];
     
     // 降低分辨率，减少采样率
-    //self.session.sessionPreset = AVCaptureSessionPreset1280x720;
+    self.session.sessionPreset = AVCaptureSessionPreset640x480;
     // 设置最小的视频帧输出间隔
     self.device.activeVideoMinFrameDuration = CMTimeMake(1, 10);
 
@@ -151,9 +151,7 @@ static float T = 10;
                 d_i_c = i;
             }
         }
-        
         // 2.找到最低峰值以后  以最低峰值为中心 找到前0.5-1.5周期中的最低峰值  和后0.5-1.5周期的最低峰值
-        
         if (d_i_c >= 1.5*T) {
             
             // a.如果最低峰值处在中心位置， 即距离前后都至少有1.5个周期
@@ -161,7 +159,7 @@ static float T = 10;
                 // 左面最低峰值
                 for (int j = d_i_c - 0.5*T; j > d_i_c - 1.5*T; j--) {
                     float trough = [[[self.points[j] allObjects] firstObject] floatValue];
-                    if (trough < trough_l) {
+                    if ((trough < trough_l)&&(d_i_c-j)<=T) {
                         trough_l = trough;
                         d_i_l = j;
                     }
@@ -169,7 +167,7 @@ static float T = 10;
                 // 右面最低峰值
                 for (int k = d_i_c + 0.5*T; k < d_i_c + 1.5*T; k++) {
                     float trough = [[[self.points[k] allObjects] firstObject] floatValue];
-                    if (trough < trough_r) {
+                    if ((trough < trough_r)&&(k-d_i_c<=T)) {
                         trough_r = trough;
                         d_i_r = k;
                     }
@@ -183,7 +181,7 @@ static float T = 10;
                     // 左面最低峰值
                     for (int j = d_i_c - 0.5*T; j > d_i_c - 1.5*T; j--) {
                         float trough = [[[self.points[j] allObjects] firstObject] floatValue];
-                        if (trough < trough_l) {
+                        if ((trough < trough_l)&&(d_i_c-j)<=T) {
                             trough_l = trough;
                             d_i_l = j;
                         }
@@ -191,7 +189,7 @@ static float T = 10;
                     // 右面最低峰值
                     for (int k = d_i_c + 0.5*T; k < count; k++) {
                         float trough = [[[self.points[k] allObjects] firstObject] floatValue];
-                        if (trough < trough_r) {
+                        if ((trough < trough_r)&&(k-d_i_c<=T)) {
                             trough_r = trough;
                             d_i_r = k;
                         }
@@ -202,7 +200,7 @@ static float T = 10;
                     // 左面最低峰值
                     for (int j = d_i_c - 0.5*T; j > d_i_c - 1.5*T; j--) {
                         float trough = [[[self.points[j] allObjects] firstObject] floatValue];
-                        if (trough < trough_l) {
+                        if ((trough < trough_l)&&(d_i_c-j)<=T) {
                             trough_l = trough;
                             d_i_l = j;
                         }
@@ -218,7 +216,7 @@ static float T = 10;
                 // 左面最低峰值
                 for (int j = d_i_c - 0.5*T; j > 0; j--) {
                     float trough = [[[self.points[j] allObjects] firstObject] floatValue];
-                    if (trough < trough_l) {
+                    if ((trough < trough_l)&&(d_i_c-j)<=T) {
                         trough_l = trough;
                         d_i_l = j;
                     }
@@ -226,7 +224,7 @@ static float T = 10;
                 // 右面最低峰值
                 for (int k = d_i_c + 0.5*T; k < d_i_c + 1.5*T; k++) {
                     float trough = [[[self.points[k] allObjects] firstObject] floatValue];
-                    if (trough < trough_r) {
+                    if ((trough < trough_r)&&(k-d_i_c<=T)) {
                         trough_r = trough;
                         d_i_r = k;
                     }
@@ -238,7 +236,7 @@ static float T = 10;
                 // 右面最低峰值
                 for (int k = d_i_c + 0.5*T; k < d_i_c + 1.5*T; k++) {
                     float trough = [[[self.points[k] allObjects] firstObject] floatValue];
-                    if (trough < trough_r) {
+                    if ((trough < trough_r)&&(k-d_i_c<=T)) {
                         trough_r = trough;
                         d_i_r = k;
                     }
