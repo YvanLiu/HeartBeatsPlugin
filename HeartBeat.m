@@ -268,6 +268,7 @@ static float T = 10;
             if ([self.delegate respondsToSelector:@selector(startHeartDelegateRateFrequency:)])
                 [self.delegate startHeartDelegateRateFrequency:fre];
         }
+ 
         // 4.删除过期数据
         for (int i = 0; i< 10; i++) {
             [self.points removeObjectAtIndex:0];
